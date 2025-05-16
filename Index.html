@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zakat Calculator (INR) - Auto Price Fetch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f9ff; /* Light blue background */
+        }
+        .container {
+            max-width: 700px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+        .input-group label, .dynamic-input-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151; /* Gray-700 */
+        }
+        .input-group input[type="number"], .dynamic-input-field input[type="number"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db; /* Gray-300 */
+            border-radius: 8px;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            appearance: textfield;
+            -moz-appearance: textfield;
+        }
+        .input-group input[type="number"]:focus, .dynamic-input-field input[type="number"]:focus {
+            outline: none;
+            border-color: #2563eb; /* Blue-600 */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        .calculate-btn, .add-btn {
+            padding: 0.75rem 1.25rem;
+            background-color: #2563eb;
+            color: white;
+            font-weight: 500;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            text-align: center;
+        }
+        .calculate-btn {
+            width: 100%;
+            padding: 0.875rem 1.5rem;
+            font-weight: 600;
+        }
+        .add-btn {
+            background-color: #10b981;
+            margin-top: 0.5rem;
+        }
+        .add-btn:hover {
+            background-color: #059669;
+        }
+        .calculate-btn:hover {
+            background-color: #1d4ed8;
+        }
+        .remove-btn {
+            padding: 0.5rem 0.75rem;
+            background-color: #ef4444;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            margin-left: 0.5rem;
+        }
+        .remove-btn:hover {
+            background-color: #dc2626;
+        }
+        .dynamic-input-entry {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .dynamic-input-field {
+            flex-grow: 1;
+            position: relative;
+        }
+        .result-box {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .result-box h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .result-box p#zakatAmount { font-size: 1.5rem; font-weight: 700; }
+        .result-box p.nisab-details { font-size: 0.9rem; color: #4b5563; margin-top: 0.75rem; }
+        .error-message { color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem; }
+        .info-text { font-size: 0.875rem; color: #4b5563; margin-top: 0.25rem; }
+        .important-note { font-size: 0.875rem; color: #c2410c; font-weight: 500; }
+        .price-status { font-size: 0.8rem; color: #52525b; /* zinc-600 */ margin-top: 0.25rem; font-style: italic; }
+        .currency-symbol { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #6b7280; }
+        .input-wrapper input[type="number"], .dynamic-input-field input[type="number"] { padding-left: 2.5rem; }
+        .unit-label { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: #6b7280; font-size: 0.875rem; }
+
+        .zakat-due { background-color: #dcfce7; border: 1px solid #86efac; }
+        .zakat-due h3 { color: #15803d; }
+        .zakat-due p#zakatAmount { color: #166534; }
+
+        .zakat-not-due { background-color: #fef9c3; border: 1px solid #fde047; }
+        .zakat-not-due h3 { color: #a16207; }
+        .zakat-not-due p#zakatAmount { color: #854d0e; font-size: 1rem; font-weight: normal; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-700">Zakat Calculator (INR)</h1>
+            <p class="text-gray-600 mt-2">Calculate your Zakat obligation easily and accurately.</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div class="input-group">
+                <label for="goldPrice">Current Gold Price (per gram in ₹)</label>
+                <div class="input-wrapper">
+                    <span class="currency-symbol">₹</span>
+                    <input type="number" id="goldPrice" placeholder="Fetching..." min="0" step="any">
+                </div>
+                 <p class="info-text">Enter current market rate if auto-fetch fails or for precision.</p>
+                 <p id="goldPriceStatus" class="price-status">Attempting to fetch live price...</p>
+            </div>
+            <div class="input-group">
+                <label for="silverPrice">Current Silver Price (per gram in ₹)</label>
+                 <div class="input-wrapper">
+                    <span class="currency-symbol">₹</span>
+                    <input type="number" id="silverPrice" placeholder="Fetching..." min="0" step="any">
+                </div>
+                <p class="info-text">Enter current market rate if auto-fetch fails or for precision.</p>
+                <p id="silverPriceStatus" class="price-status">Attempting to fetch live price...</p>
+            </div>
+        </div>
+
+        <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">Your Assets (in ₹)</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+            <div class="input-group md:col-span-2">
+                <label class="dynamic-input-label">Cash & Bank Balances</label>
+                <div id="bankBalanceEntries">
+                    <div class="dynamic-input-entry">
+                        <div class="dynamic-input-field">
+                            <span class="currency-symbol">₹</span>
+                            <input type="number" class="bank-balance-item" placeholder="e.g., 50000" min="0" step="any">
+                        </div>
+                    </div>
+                </div>
+                <button type="button" id="addBankBalanceBtn" class="add-btn">Add Bank Account</button>
+            </div>
+
+            <div class="input-group">
+                <label for="goldAmount">Gold Possessed</label>
+                <div class="relative">
+                    <input type="number" id="goldAmount" class="pr-16" placeholder="e.g., 10" min="0" step="any">
+                    <span class="unit-label">grams</span>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="silverAmount">Silver Possessed</label>
+                 <div class="relative">
+                    <input type="number" id="silverAmount" class="pr-16" placeholder="e.g., 500" min="0" step="any">
+                    <span class="unit-label">grams</span>
+                </div>
+            </div>
+
+            <div class="input-group md:col-span-2">
+                <label class="dynamic-input-label">Mutual Funds & Shares</label>
+                <div id="mutualFundsEntries">
+                    <div class="dynamic-input-entry">
+                        <div class="dynamic-input-field">
+                            <span class="currency-symbol">₹</span>
+                            <input type="number" class="mutual-funds-item" placeholder="e.g., 100000" min="0" step="any">
+                        </div>
+                    </div>
+                </div>
+                <button type="button" id="addMutualFundBtn" class="add-btn">Add Investment</button>
+                <p class="info-text">Value of investments intended for growth/resale.</p>
+            </div>
+
+            <div class="input-group md:col-span-2">
+                <label for="otherAssets">Other Zakatable Assets</label>
+                <div class="input-wrapper">
+                    <span class="currency-symbol">₹</span>
+                    <input type="number" id="otherAssets" placeholder="e.g., 25000" min="0" step="any">
+                </div>
+                <p class="info-text">e.g., Rental income received, business inventory value.</p>
+            </div>
+        </div>
+
+        <button id="calculateBtn" class="calculate-btn mt-6">Calculate Zakat</button>
+
+        <div id="result" class="result-box hidden">
+            <h3 id="resultTitle"></h3>
+            <p id="zakatAmount"></p>
+            <p id="nisabInfo" class="nisab-details"></p>
+        </div>
+        
+        <div class="mt-8 text-center text-sm text-gray-500">
+            <p><strong>Disclaimer:</strong> This calculator provides an estimation. Zakat laws can be complex. Please consult a qualified religious scholar for precise Zakat obligations and any specific queries.</p>
+            <p class="mt-1">Nisab is the minimum amount of wealth a Muslim must possess for a full lunar year before Zakat becomes obligatory. It is traditionally equivalent to 85 grams of gold or 595 grams of silver. The Nisab value used for calculation here is based on 85 grams of gold.</p>
+            <p class="mt-1 important-note">Live metal prices are fetched from public APIs and are for estimation only. Verify with local rates for accuracy.</p>
+        </div>
+    </div>
+
+    <script>
+        // Constants
+        const NISAB_GOLD_GRAMS = 85;
+        const NISAB_SILVER_GRAMS = 595;
+        const CURRENCY_SYMBOL_TEXT = "₹";
+        const OUNCE_TO_GRAMS = 31.1034768; // Troy ounce to grams conversion factor
+
+        // DOM Elements
+        const goldPriceEl = document.getElementById('goldPrice');
+        const silverPriceEl = document.getElementById('silverPrice');
+        const goldPriceStatusEl = document.getElementById('goldPriceStatus');
+        const silverPriceStatusEl = document.getElementById('silverPriceStatus');
+
+        const goldAmountEl = document.getElementById('goldAmount');
+        const silverAmountEl = document.getElementById('silverAmount');
+        const otherAssetsEl = document.getElementById('otherAssets');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const resultDiv = document.getElementById('result');
+        const resultTitleEl = document.getElementById('resultTitle');
+        const zakatAmountEl = document.getElementById('zakatAmount');
+        const nisabInfoEl = document.getElementById('nisabInfo');
+
+        const bankBalanceEntriesEl = document.getElementById('bankBalanceEntries');
+        const addBankBalanceBtn = document.getElementById('addBankBalanceBtn');
+        const mutualFundsEntriesEl = document.getElementById('mutualFundsEntries');
+        const addMutualFundBtn = document.getElementById('addMutualFundBtn');
+
+        // --- Price Fetching Logic ---
+        async function fetchLivePrices() {
+            let usdToInrRate = null;
+            let goldPriceUsdPerOunce = null;
+            let silverPriceUsdPerOunce = null;
+
+            // 1. Fetch USD to INR exchange rate
+            try {
+                const exchangeApiUrl = 'https://open.er-api.com/v6/latest/USD';
+                const response = await fetch(exchangeApiUrl);
+                if (!response.ok) throw new Error(`Exchange rate API error: ${response.status}`);
+                const data = await response.json();
+                if (data.result === 'success' && data.rates && data.rates.INR) {
+                    usdToInrRate = data.rates.INR;
+                } else {
+                    throw new Error('Could not parse INR exchange rate from API response.');
+                }
+            } catch (error) {
+                console.error("Error fetching USD to INR:", error);
+                goldPriceStatusEl.textContent = 'Failed to fetch exchange rate. Enter manually.';
+                silverPriceStatusEl.textContent = 'Failed to fetch exchange rate. Enter manually.';
+                goldPriceEl.placeholder = "Enter manually";
+                silverPriceEl.placeholder = "Enter manually";
+                // Don't stop here, metal prices might still be fetched in USD if needed for other purposes,
+                // or we might want to allow manual entry even if only one part fails.
+            }
+
+            // 2. Fetch Gold and Silver prices in USD per ounce
+            // Using data.goldprice.org as it's often accessible without keys
+            // Note: This API might change or have CORS issues unexpectedly.
+            try {
+                const metalApiUrl = 'https://data-asg.goldprice.org/dbXRates/USD';
+                const response = await fetch(metalApiUrl);
+                if (!response.ok) throw new Error(`Metal price API error: ${response.status}`);
+                const data = await response.json();
+                if (data && data.items && data.items.length > 0) {
+                    goldPriceUsdPerOunce = data.items[0].xauPrice;
+                    silverPriceUsdPerOunce = data.items[0].xagPrice;
+                } else {
+                     throw new Error('Could not parse metal prices from API response.');
+                }
+            } catch (error) {
+                console.error("Error fetching metal prices:", error);
+                // Update status only if exchange rate was fetched, otherwise previous message stands
+                if (usdToInrRate) {
+                    goldPriceStatusEl.textContent = 'Failed to fetch metal prices. Enter manually.';
+                    silverPriceStatusEl.textContent = 'Failed to fetch metal prices. Enter manually.';
+                }
+                goldPriceEl.placeholder = "Enter manually";
+                silverPriceEl.placeholder = "Enter manually";
+            }
+
+            // 3. Calculate and Populate if all data is available
+            if (usdToInrRate && goldPriceUsdPerOunce) {
+                const goldPriceInrPerGram = (goldPriceUsdPerOunce / OUNCE_TO_GRAMS) * usdToInrRate;
+                goldPriceEl.value = goldPriceInrPerGram.toFixed(2);
+                goldPriceStatusEl.textContent = `Live price (₹${goldPriceInrPerGram.toFixed(2)}/g) fetched!`;
+                goldPriceEl.placeholder = ""; // Clear placeholder if value is set
+            } else if (!goldPriceUsdPerOunce) { // If only gold price failed but exchange rate succeeded
+                 goldPriceStatusEl.textContent = 'Failed to fetch gold price. Enter manually.';
+                 goldPriceEl.placeholder = "Enter manually";
+            }
+
+
+            if (usdToInrRate && silverPriceUsdPerOunce) {
+                const silverPriceInrPerGram = (silverPriceUsdPerOunce / OUNCE_TO_GRAMS) * usdToInrRate;
+                silverPriceEl.value = silverPriceInrPerGram.toFixed(2);
+                silverPriceStatusEl.textContent = `Live price (₹${silverPriceInrPerGram.toFixed(2)}/g) fetched!`;
+                silverPriceEl.placeholder = ""; // Clear placeholder if value is set
+            } else if (!silverPriceUsdPerOunce) { // If only silver price failed
+                silverPriceStatusEl.textContent = 'Failed to fetch silver price. Enter manually.';
+                silverPriceEl.placeholder = "Enter manually";
+            }
+            
+            // If fetching failed for any reason and placeholders are not "Enter manually" yet
+            if (!goldPriceEl.value && goldPriceEl.placeholder === "Fetching...") goldPriceEl.placeholder = "Enter manually";
+            if (!silverPriceEl.value && silverPriceEl.placeholder === "Fetching...") silverPriceEl.placeholder = "Enter manually";
+        }
+
+        // --- Dynamic Entry Logic ---
+        function createDynamicEntry(type, placeholder) {
+            const entryDiv = document.createElement('div');
+            entryDiv.className = 'dynamic-input-entry';
+            const fieldDiv = document.createElement('div');
+            fieldDiv.className = 'dynamic-input-field';
+            const currencySpan = document.createElement('span');
+            currencySpan.className = 'currency-symbol';
+            currencySpan.textContent = CURRENCY_SYMBOL_TEXT;
+            const inputEl = document.createElement('input');
+            inputEl.type = 'number';
+            inputEl.className = type === 'bank' ? 'bank-balance-item' : 'mutual-funds-item';
+            inputEl.placeholder = placeholder;
+            inputEl.min = "0";
+            inputEl.step = "any";
+            inputEl.addEventListener('input', () => clearErrorForElement(inputEl));
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-btn';
+            removeBtn.textContent = 'Remove';
+            removeBtn.onclick = () => {
+                entryDiv.remove();
+                updateRemoveButtonsVisibility(type === 'bank' ? bankBalanceEntriesEl : mutualFundsEntriesEl);
+            };
+            fieldDiv.appendChild(currencySpan);
+            fieldDiv.appendChild(inputEl);
+            entryDiv.appendChild(fieldDiv);
+            entryDiv.appendChild(removeBtn);
+            return entryDiv;
+        }
+
+        function updateRemoveButtonsVisibility(container) {
+            const entries = container.querySelectorAll('.dynamic-input-entry');
+            entries.forEach((entry) => {
+                let removeBtn = entry.querySelector('.remove-btn');
+                if (entries.length > 1) {
+                    if (!removeBtn) {
+                        removeBtn = document.createElement('button');
+                        removeBtn.type = 'button';
+                        removeBtn.className = 'remove-btn';
+                        removeBtn.textContent = 'Remove';
+                        removeBtn.onclick = () => {
+                            entry.remove();
+                            updateRemoveButtonsVisibility(container);
+                        };
+                        entry.appendChild(removeBtn);
+                    }
+                    removeBtn.style.display = '';
+                } else {
+                    if (removeBtn) removeBtn.style.display = 'none';
+                }
+            });
+        }
+
+        addBankBalanceBtn.addEventListener('click', () => {
+            const newEntry = createDynamicEntry('bank', 'e.g., 20000');
+            bankBalanceEntriesEl.appendChild(newEntry);
+            updateRemoveButtonsVisibility(bankBalanceEntriesEl);
+        });
+
+        addMutualFundBtn.addEventListener('click', () => {
+            const newEntry = createDynamicEntry('mutualFund', 'e.g., 50000');
+            mutualFundsEntriesEl.appendChild(newEntry);
+            updateRemoveButtonsVisibility(mutualFundsEntriesEl);
+        });
+
+        // --- Calculation Logic ---
+        calculateBtn.addEventListener('click', () => {
+            clearAllErrorMessages();
+            resultDiv.classList.add('hidden');
+            resultDiv.className = 'result-box hidden';
+
+            const goldPrice = parseFloat(goldPriceEl.value);
+            const silverPrice = parseFloat(silverPriceEl.value);
+            const goldAmountGrams = parseFloat(goldAmountEl.value) || 0;
+            const silverAmountGrams = parseFloat(silverAmountEl.value) || 0;
+            const otherAssets = parseFloat(otherAssetsEl.value) || 0;
+
+            let isValid = true;
+            if (isNaN(goldPrice) || goldPrice <= 0) {
+                displayError(goldPriceEl.closest('.input-group'), 'Please enter a valid gold price.');
+                isValid = false;
+            }
+            if (isNaN(silverPrice) || silverPrice <= 0) {
+                displayError(silverPriceEl.closest('.input-group'), 'Please enter a valid silver price.');
+                isValid = false;
+            }
+
+            let totalBankBalance = 0;
+            document.querySelectorAll('.bank-balance-item').forEach(input => {
+                const val = parseFloat(input.value);
+                if (!isNaN(val) && val >= 0) totalBankBalance += val; // Allow 0
+                else if (input.value !== "" && (isNaN(val) || val < 0)) {
+                    displayError(input.closest('.dynamic-input-entry'), 'Invalid amount.');
+                    isValid = false;
+                }
+            });
+
+            let totalMutualFunds = 0;
+            document.querySelectorAll('.mutual-funds-item').forEach(input => {
+                const val = parseFloat(input.value);
+                if (!isNaN(val) && val >= 0) totalMutualFunds += val; // Allow 0
+                 else if (input.value !== "" && (isNaN(val) || val < 0)) {
+                    displayError(input.closest('.dynamic-input-entry'), 'Invalid amount.');
+                    isValid = false;
+                }
+            });
+
+            if (!isValid) return;
+
+            const nisabThresholdGold = NISAB_GOLD_GRAMS * goldPrice;
+            const nisabThresholdSilver = NISAB_SILVER_GRAMS * silverPrice;
+            const nisabThreshold = nisabThresholdGold;
+
+            const totalGoldValue = goldAmountGrams * goldPrice;
+            const totalSilverValue = silverAmountGrams * silverPrice;
+            const totalAssets = totalBankBalance + totalGoldValue + totalSilverValue + totalMutualFunds + otherAssets;
+
+            resultDiv.classList.remove('hidden');
+            const formattedNisabGold = formatCurrency(nisabThresholdGold);
+            const formattedNisabSilver = formatCurrency(nisabThresholdSilver);
+            const formattedTotalAssets = formatCurrency(totalAssets);
+
+            nisabInfoEl.innerHTML = `Nisab (85g Gold): <strong>${formattedNisabGold}</strong> | Nisab (595g Silver): <strong>${formattedNisabSilver}</strong><br>Your Total Zakatable Assets: <strong>${formattedTotalAssets}</strong>`;
+
+            if (totalAssets >= nisabThreshold) {
+                const zakatDue = totalAssets * 0.025;
+                resultTitleEl.textContent = 'Zakat Obligation';
+                zakatAmountEl.textContent = formatCurrency(zakatDue);
+                resultDiv.classList.add('zakat-due');
+                resultDiv.classList.remove('zakat-not-due');
+            } else {
+                resultTitleEl.textContent = 'Zakat Not Currently Obligatory';
+                zakatAmountEl.textContent = 'Your total assets are below the Nisab threshold.';
+                resultDiv.classList.add('zakat-not-due');
+                resultDiv.classList.remove('zakat-due');
+            }
+        });
+
+        // --- Helper Functions ---
+        function displayError(containerElement, message) {
+            if (!containerElement) return;
+            const existingError = containerElement.querySelector('.error-message');
+            if (existingError) existingError.remove();
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            containerElement.appendChild(errorDiv);
+        }
+        
+        function clearErrorForElement(element) {
+            const container = element.closest('.dynamic-input-entry') || element.closest('.input-group');
+            if (container) {
+                const errorMsg = container.querySelector('.error-message');
+                if (errorMsg) errorMsg.remove();
+            }
+        }
+
+        function clearAllErrorMessages() {
+            document.querySelectorAll('.error-message').forEach(msg => msg.remove());
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-IN', { 
+                style: 'currency', currency: 'INR', 
+                minimumFractionDigits: 2, maximumFractionDigits: 2 
+            }).format(amount);
+        }
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchLivePrices(); // Attempt to fetch prices on load
+            updateRemoveButtonsVisibility(bankBalanceEntriesEl);
+            updateRemoveButtonsVisibility(mutualFundsEntriesEl);
+
+            // Add input event listeners to clear errors on input for static fields
+            [goldPriceEl, silverPriceEl, goldAmountEl, silverAmountEl, otherAssetsEl].forEach(el => {
+                el.addEventListener('input', () => clearErrorForElement(el));
+            });
+        });
+    </script>
+</body>
+</html>
